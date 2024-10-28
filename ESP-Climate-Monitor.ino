@@ -6,14 +6,15 @@
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_AHTX0.h>
 
+
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define SDA_PIN 3 //3
 #define SCL_PIN 2 //1
-#define BATTERY_PIN 1 // ADC pin for battery voltage
+#define BATTERY_PIN 0 // ADC pin for battery voltage
 
-#define BUTTON_PIN 0
-#define WAKE_UP_BUTTON_GPIO_BITMASK 0b000001
+#define BUTTON_PIN 1
+#define WAKE_UP_BUTTON_GPIO_BITMASK 0b000010
 #define SLEEP_DURATION 10000000 // 10 seconds in microseconds
 #define DEBOUNCE_TIME 100
 
@@ -40,7 +41,7 @@ volatile bool WbuttonPressed = false;
 
 void setup() {
   Serial.begin(115200);
-  delay(1000);
+  //delay(1000);
   Serial.println("Starting...");
 
   analogReadResolution(12);
@@ -57,7 +58,7 @@ void setup() {
     while(1);
   }
 
-  delay(2000);
+  //delay(2000);
 
   display.clearDisplay();
   
@@ -96,32 +97,37 @@ void drawBatteryIcon(int level) {
 void enterDeepSleep() {
   Serial.println("Going to deep sleep...");
   esp_deep_sleep_enable_gpio_wakeup(WAKE_UP_BUTTON_GPIO_BITMASK, ESP_GPIO_WAKEUP_GPIO_HIGH);
-  //esp_sleep_enable_timer_wakeup(sleepDurationUs);
+  esp_sleep_enable_timer_wakeup(10000000);
   esp_deep_sleep_start();
+
+  //gpio_wakeup_enable(gpio_num_t(BUTTON_PIN), GPIO_INTR_HIGH_LEVEL);
+  //esp_sleep_enable_gpio_wakeup();
+  //esp_light_sleep_start();
 }
 
 
 void loop() {
-  if  (millis() - last_time > 15000) {
+  if  (millis() - last_time > 5000) {
     enterDeepSleep();
   }
 
 
-  if (WbuttonPressed) {
-    WbuttonPressed = false;
-    delay(DEBOUNCE_TIME);
-    enterDeepSleep();
-  }
+  // if (WbuttonPressed) {
+  //   WbuttonPressed = false;
+  //   delay(DEBOUNCE_TIME);
+  //   enterDeepSleep();
+  // }
 
   bool buttonState = digitalRead(BUTTON_PIN);
 
-  Serial.println(buttonState);
 
   // && lastButtonState == HIGH
   if (buttonState == HIGH && lastButtonState == LOW) { 
     currentMode = static_cast<DisplayMode>((currentMode + 1) % 4);
-    delay(200); // Small delay to avoid multiple state changes
+    //delay(10); // Small delay to avoid multiple state changes
   }
+
+  Serial.println(currentMode);
 
   lastButtonState = buttonState;
 
@@ -169,7 +175,8 @@ void loop() {
   display.print(batteryLevel); display.println(" %");
 
   display.display();
-  delay(100);
+  //delay(100);
+  Serial.println(millis());
 
   //enterDeepSleep();
 }
