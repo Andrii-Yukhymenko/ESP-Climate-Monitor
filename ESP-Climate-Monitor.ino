@@ -8,9 +8,9 @@
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-#define SDA_PIN 3
-#define SCL_PIN 1
-#define BATTERY_PIN 2 // ADC pin for battery voltage
+#define SDA_PIN 3 //3
+#define SCL_PIN 2 //1
+#define BATTERY_PIN 1 // ADC pin for battery voltage
 
 #define BUTTON_PIN 0
 #define WAKE_UP_BUTTON_GPIO_BITMASK 0b000001
@@ -21,19 +21,21 @@ const float R1 = 100000.0; // 100kΩ
 const float R2 = 100000.0; // 100kΩ
 const float correctionFactor = (R1 + R2) / R2; // Корректирующий коэффициент
 
+unsigned long last_time;
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 Adafruit_AHTX0 aht;
 
 enum DisplayMode { SHOW_TEMPERATURE, SHOW_HUMIDITY, SHOW_BOTH, SHOW_BATTERY };
 DisplayMode currentMode = SHOW_TEMPERATURE;
 
-bool lastButtonState = HIGH;
+bool lastButtonState = LOW;
 
 volatile bool WbuttonPressed = false;
 
-void IRAM_ATTR handleButtonPress() {
-  WbuttonPressed = true;
-}
+// void IRAM_ATTR handleButtonPress() {
+//   WbuttonPressed = true;
+// }
 
 
 void setup() {
@@ -59,11 +61,11 @@ void setup() {
 
   display.clearDisplay();
   
-  gpio_set_direction(gpio_num_t(BUTTON_PIN), GPIO_MODE_INPUT);
+  //gpio_set_direction(gpio_num_t(BUTTON_PIN), GPIO_MODE_INPUT);
 
-  pinMode(BUTTON_PIN, INPUT_PULLUP); // было просто инбут без пулап
+  pinMode(BUTTON_PIN, INPUT); // было просто инбут без пулап
 
-  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, RISING);
+  //attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, RISING);
 
 
   // !!!Может быть полезно извлечение причины выхода из сна
@@ -100,18 +102,23 @@ void enterDeepSleep() {
 
 
 void loop() {
+  if  (millis() - last_time > 15000) {
+    enterDeepSleep();
+  }
+
+
   if (WbuttonPressed) {
     WbuttonPressed = false;
     delay(DEBOUNCE_TIME);
     enterDeepSleep();
   }
 
-  bool buttonState = !digitalRead(BUTTON_PIN);
+  bool buttonState = digitalRead(BUTTON_PIN);
 
   Serial.println(buttonState);
 
   // && lastButtonState == HIGH
-  if (buttonState == HIGH) { 
+  if (buttonState == HIGH && lastButtonState == LOW) { 
     currentMode = static_cast<DisplayMode>((currentMode + 1) % 4);
     delay(200); // Small delay to avoid multiple state changes
   }
@@ -149,12 +156,12 @@ void loop() {
       display.print("Humidity: "); display.print(humidity.relative_humidity); display.println(" %");
       break;
     case SHOW_BATTERY:
-      //drawBatteryIcon(batteryLevel);
+      
 
-      //display.print("Voltage: "); display.print(batteryVoltage); display.println(" V");
-      //display.print("Level: "); display.print(batteryLevel); display.println(" %");
+      display.print("Voltage: "); display.print(batteryVoltage); display.println(" V");
+      display.print("Level: "); display.print(batteryLevel); display.println(" %");
 
-      drawBatteryIcon(batteryIconLevel);
+      //drawBatteryIcon(batteryIconLevel);
       break;
   }
 
@@ -163,5 +170,7 @@ void loop() {
 
   display.display();
   delay(100);
+
+  //enterDeepSleep();
 }
 
